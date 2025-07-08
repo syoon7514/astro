@@ -1,216 +1,69 @@
 import streamlit as st
-
 import numpy as np
-
-from astropy.io import fits
-
-from PIL import Image
-
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-
-from astropy.time import Time
-
-from datetime import datetime
-
-
-# --- Streamlit 앱 페이지 설정 ---
-
-st.set_page_config(page_title="천문 이미지 분석기", layout="wide")
-
-st.title("🔭 천문 이미지 처리 앱")
-
-
-# --- 파일 업로더 ---
-
-uploaded_file = st.file_uploader(
-
-    "분석할 FITS 파일을 선택하세요.",
-
-    type=['fits', 'fit', 'fz']
-
-)
-
-
-# --- 서울 위치 설정 (고정값) ---
-
-seoul_location = EarthLocation(lat=37.5665, lon=126.9780, height=50)  # 서울 위도/경도/고도
-
-
-# --- 현재 시간 (UTC 기준) ---
-
-now = datetime.utcnow()
-
-now_astropy = Time(now)
-
-
-# --- 파일이 업로드되면 실행될 로직 ---
-
-if uploaded_file:
-
-    try:
-
-        with fits.open(uploaded_file) as hdul:
-
-            image_hdu = None
-
-            for hdu in hdul:
-
-                if hdu.data is not None and hdu.is_image:
-
-                    image_hdu = hdu
-
-                    break
-
-
-            if image_hdu is None:
-
-                st.error("파일에서 유효한 이미지 데이터를 찾을 수 없습니다.")
-
-            else:
-
-                header = image_hdu.header
-
-                data = image_hdu.data
-
-                data = np.nan_to_num(data)
-
-
-                st.success(f"**'{uploaded_file.name}'** 파일을 성공적으로 처리했습니다.")
-
-                col1, col2 = st.columns(2)
-
-
-                with col1:
-
-                    st.header("이미지 정보")
-
-                    st.text(f"크기: {data.shape[1]} x {data.shape[0]} 픽셀")
-
-                    if 'OBJECT' in header:
-
-                        st.text(f"관측 대상: {header['OBJECT']}")
-
-                    if 'EXPTIME' in header:
-
-                        st.text(f"노출 시간: {header['EXPTIME']} 초")
-
-
-                    st.header("물리량")
-
-                    mean_brightness = np.mean(data)
-
-                    st.metric(label="이미지 전체 평균 밝기", value=f"{mean_brightness:.2f}")
-
-
-                with col2:
-
-                    st.header("이미지 미리보기")
-
-                    if data.max() == data.min():
-
-                        norm_data = np.zeros(data.shape, dtype=np.uint8)
-
-                    else:
-
-                        scale_min = np.percentile(data, 5)
-
-                        scale_max = np.percentile(data, 99.5)
-
-                        data_clipped = np.clip(data, scale_min, scale_max)
-
-                        norm_data = (255 * (data_clipped - scale_min) / (scale_max - scale_min)).astype(np.uint8)
-
-
-                    img = Image.fromarray(norm_data)
-
-                    st.image(img, caption="업로드된 FITS 이미지", use_container_width=True)
-
-
-
-                # --- 사이드바: 현재 천체 위치 계산 ---
-
-                st.sidebar.header("🧭 현재 천체 위치 (서울 기준)")
-
-
-                if 'RA' in header and 'DEC' in header:
-
-                    try:
-
-                        target_coord = SkyCoord(ra=header['RA'], dec=header['DEC'], unit=('hourangle', 'deg'))
-
-                        altaz = target_coord.transform_to(AltAz(obstime=now_astropy, location=seoul_location))
-
-                        altitude = altaz.alt.degree
-
-                        azimuth = altaz.az.degree
-
-
-                        st.sidebar.metric("고도 (°)", f"{altitude:.2f}")
-
-                        st.sidebar.metric("방위각 (°)", f"{azimuth:.2f}")
-
-                    except Exception as e:
-
-                        st.sidebar.warning(f"천체 위치 계산 실패: {e}")
-
-                else:
-
-                    st.sidebar.info("FITS 헤더에 RA/DEC 정보가 없습니다.")
-
-
-    except Exception as e:
-
-        st.error(f"파일 처리 중 오류가 발생했습니다: {e}")
-
-        st.warning("파일이 손상되었거나 유효한 FITS 형식이 아닐 수 있습니다.")
-
+import matplotlib.pyplot as plt
+
+st.title("🌌 은하 회전 곡선 시뮬레이터")
+st.markdown("""
+이 시뮬레이터는 은하 내 별들의 공전 속도를 반지름에 따라 나타낸 그래프를 통해, 암흑물질의 존재 가능성을 시각적으로 보여줍니다.
+""")
+
+# -----------------------------
+# 1. 입력 데이터 설정
+# -----------------------------
+st.header("🔧 반지름-속도 데이터 설정")
+
+default_r = np.linspace(0.1, 20, 100)
+default_v_obs = np.concatenate([
+    np.sqrt(default_r[:30] * 50),
+    np.full(70, np.sqrt(30 * 50))
+])
+
+# 사용자 커스터마이즈
+r = st.slider("반지름 범위 (kpc)", 5, 50, 20)
+mass_distribution = st.selectbox("질량 분포 가정", ["구형 분포 (M∝r³)", "균등 분포 (M∝r)"])
+
+r_vals = np.linspace(0.1, r, 100)
+
+# -----------------------------
+# 2. 뉴턴 예측 속도 계산
+# -----------------------------
+G = 4.3e-6  # kpc (km/s)^2 / Msun, 은하 단위에 맞춘 중력상수
+if mass_distribution == "구형 분포 (M∝r³)":
+    M = r_vals ** 3
 else:
+    M = r_vals
 
-    st.info("시작하려면 FITS 파일을 업로드해주세요.")
+v_newton = np.sqrt(G * M / r_vals)
 
+# -----------------------------
+# 3. 관측 속도 설정 (플랫한 속도 곡선)
+# -----------------------------
+# 관측 속도는 r=5kpc 이후부터는 평평한 속도 유지
+v_obs = np.concatenate([
+    np.sqrt(r_vals[:30] * 50),
+    np.full(len(r_vals) - 30, np.sqrt(30 * 50))
+])
 
-# --- 💬 댓글 기능 (세션 기반) ---
+# -----------------------------
+# 4. 시각화
+# -----------------------------
+st.header("📊 회전 곡선 그래프")
 
-st.divider()
+fig, ax = plt.subplots()
+ax.plot(r_vals, v_newton, label="예측 속도 (뉴턴 역학)", linestyle='--')
+ax.plot(r_vals, v_obs, label="관측 속도", linestyle='-')
+ax.set_xlabel("반지름 (kpc)")
+ax.set_ylabel("공전 속도 (km/s)")
+ax.set_title("은하 회전 곡선 비교")
+ax.legend()
+st.pyplot(fig)
 
-st.header("💬 의견 남기기")
-
-
-if "comments" not in st.session_state:
-
-    st.session_state.comments = []
-
-
-with st.form(key="comment_form"):
-
-    name = st.text_input("이름을 입력하세요", key="name_input")
-
-    comment = st.text_area("댓글을 입력하세요", key="comment_input")
-
-    submitted = st.form_submit_button("댓글 남기기")
-
-
-    if submitted:
-
-        if name.strip() and comment.strip():
-
-            st.session_state.comments.append((name.strip(), comment.strip()))
-
-            st.success("댓글이 저장되었습니다.")
-
-        else:
-
-            st.warning("이름과 댓글을 모두 입력해주세요.")
-
-
-if st.session_state.comments:
-
-    st.subheader("📋 전체 댓글")
-
-    for i, (n, c) in enumerate(reversed(st.session_state.comments), 1):
-
-        st.markdown(f"**{i}. {n}**: {c}")
-
-else:
-
-    st.info("아직 댓글이 없습니다. 첫 댓글을 남겨보세요!")
+# -----------------------------
+# 5. 해설
+# -----------------------------
+st.header("📚 해설")
+st.markdown("""
+- 뉴턴 역학에 따르면 중심 질량 분포만을 고려했을 때 별의 속도는 반지름에 따라 **감소**해야 합니다.
+- 그러나 실제 관측된 속도는 **일정하게 유지**됩니다.
+- 이는 중심 외곽에 **관측되지 않는 질량(암흑물질)** 이 존재함을 시사합니다.
+""")
