@@ -25,6 +25,9 @@ sample_data = {
 }
 data = st.data_editor(sample_data, num_rows="dynamic", use_container_width=True)
 
+# ✅ DataFrame으로 변환 (오류 방지)
+data = pd.DataFrame(data)
+
 # -----------------------------
 # 2. 도플러 효과 계산
 # -----------------------------
@@ -49,7 +52,7 @@ for index, row in data.iterrows():
                 v = c * (delta_lambda / λ_0)
                 v_obs.append(v)
             else:
-                v_obs.append(0)  # 기본값
+                v_obs.append(0)  # 관측값 없으면 기본값
 
 r_vals = np.array(r_vals)
 v_obs = np.array(v_obs)
@@ -99,4 +102,3 @@ st.markdown("""
 - 하지만 실제로는 속도가 일정하게 유지되는 패턴을 보이며, 이는 **관측되지 않는 질량(암흑물질)**이 분포하고 있음을 시사합니다.
 - 이와 같은 회전 곡선은 은하 바깥까지 암흑물질이 퍼져 있음을 보여주는 **강력한 우주론적 증거**입니다.
 """, unsafe_allow_html=True)
-
