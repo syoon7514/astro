@@ -1,44 +1,65 @@
-# streamlit_app.py
+# doppler_streamlit.py
 
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-# 상수
-G = 4.302e-6  # 중력 상수 (kpc·(km/s)^2)/(Msun)
+st.set_page_config(page_title="빛의 도플러 이동 시뮬레이터", layout="centered")
 
-st.title("🌌 우리은하 속도 곡선 vs 이론 모델 시뮬레이터")
+st.title("🔭 빛의 도플러 이동 시뮬레이터")
 st.markdown("""
-이 시뮬레이터는 우리은하 내 별의 **공전 속도 곡선**을 이론적 예측과 실제 관측값을 비교하여,
-**암흑물질의 존재 가능성**을 시각적으로 보여줍니다.
+빛의 도플러 이동은 **광원과 관측자 사이의 상대 속도**에 따라 관측되는 빛의 파장이 달라지는 현상입니다.
 """)
 
-# 사용자 입력: 질량 분포 모델 선택
-model = st.radio("질량 분포 모델을 선택하세요", ["중심집중 질량 (뉴턴역학)", "질량 선형 증가 모델"])
+# 슬라이더로 광원의 속도 설정 (단위: km/s)
+v = st.slider("🌌 광원의 속도 (양수: 멀어짐 → 적색편이, 음수: 가까워짐 → 청색편이)", -290000, 290000, 0, step=1000)
 
-# 반지름 설정
-r = np.linspace(0.1, 20, 500)  # kpc
+# 도플러 공식 적용 (비상대론적 근사: v << c)
+c = 3e5  # 빛의 속도 km/s
+λ0 = 500  # 정지 상태 기준 파장 (nm), 예: 500nm 초록색
 
-# 질량 설정 (단순 모델)
-if model == "중심집중 질량 (뉴턴역학)":
-    M = np.ones_like(r) * 1e11  # 중심에 고정된 질량 10^11 Msun
-elif model == "질량 선형 증가 모델":
-    M = 5e9 * r  # 중심에서부터 선형 증가
+# 도플러 이동된 파장 계산
+λ_shifted = λ0 * (1 + v/c)
 
-# 속도 계산: v = sqrt(GM/r)
-v_model = np.sqrt(G * M / r)
+# 색상 범위 (대략적 RGB 기준)
+colors = {
+    '자주': (380, 450),
+    '파랑': (450, 495),
+    '초록': (495, 570),
+    '노랑': (570, 590),
+    '주황': (590, 620),
+    '빨강': (620, 750)
+}
 
-# 실제 관측된 은하 속도 곡선 (대략적)
-r_obs = np.linspace(0.1, 20, 100)
-v_obs = np.ones_like(r_obs) * 220  # 실제 은하는 속도가 거의 일정함 (평탄한 곡선)
+def get_color(wavelength):
+    for name, (low, high) in colors.items():
+        if low <= wavelength <= high:
+            return name
+    return "가시광선 영역 밖"
+
+# 색상 텍스트 출력
+st.markdown(f"""
+- **정지 상태 파장**: {λ0:.1f} nm → 🌈 {get_color(λ0)}  
+- **이동 후 파장**: {λ_shifted:.1f} nm → 🌈 {get_color(λ_shifted)}  
+""")
 
 # 그래프 출력
-fig, ax = plt.subplots()
-ax.plot(r, v_model, label=f"이론 속도곡선 ({model})", lw=2)
-ax.plot(r_obs, v_obs, 'r--', label="관측된 속도곡선", lw=2)
-ax.set_xlabel("중심으로부터 거리 (kpc)")
-ax.set_ylabel("공전 속도 (km/s)")
-ax.set_title("은하 회전 곡선 비교")
+fig, ax = plt.subplots(figsize=(6, 1.5))
+ax.axvline(λ0, color='black', label='정지 상태 스펙트럼', lw=2)
+ax.axvline(λ_shifted, color='red' if v > 0 else 'blue', label='이동 후 스펙트럼', lw=2)
+ax.set_xlim(350, 750)
+ax.set_xlabel("파장 (nm)")
+ax.set_yticks([])
+ax.set_title("스펙트럼 선 이동 시각화")
 ax.legend()
-ax.grid(True)
 st.pyplot(fig)
+
+# 부가 설명
+with st.expander("📘 도플러 공식 설명"):
+    st.latex(r"""\lambda' = \lambda_0 \left(1 + \frac{v}{c}\right)""")
+    st.markdown("""
+    - λ': 관측된 파장  
+    - λ₀: 원래의 파장  
+    - v: 광원과의 상대속도 (양수는 멀어짐, 음수는 가까워짐)  
+    - c: 빛의 속도 (약 300,000 km/s)  
+    """)
