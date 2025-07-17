@@ -1,10 +1,18 @@
-# kepler_streamlit_planets.py
+# save this as kepler_orbit_simulator.py and run with:
+# streamlit run kepler_orbit_simulator.py
 
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
-# 태양계 행성 데이터 (이심률, 반장축 AU 기준)
+from matplotlib.backends.backend_agg import RendererAgg
+_lock = RendererAgg.lock
+
+st.set_page_config(layout="wide")
+st.title("🌞 Kepler Orbit Simulator with Velocity Vectors")
+
+# 태양계 행성 데이터
 planet_data = {
     "Mercury": {"a": 0.387, "e": 0.206},
     "Venus": {"a": 0.723, "e": 0.007},
@@ -16,59 +24,60 @@ planet_data = {
     "Neptune": {"a": 30.07, "e": 0.009}
 }
 
-st.set_page_config(layout="wide")
-st.title("🌞 케플러 궤도 시뮬레이터 (태양계 + 속도 벡터 포함)")
+planet = st.selectbox("🌍 Choose a planet", list(planet_data.keys()))
+a = planet_data[planet]["a"]
+e = planet_data[planet]["e"]
 
-planet = st.selectbox("🌍 행성을 선택하세요", list(planet_data.keys()))
-params = planet_data[planet]
-a = params["a"]
-e = params["e"]
+st.markdown(f"**Selected Planet: {planet}**  \nEccentricity: **{e:.3f}**, Semi-major axis: **{a:.3f} AU**")
 
-st.markdown(f"**선택한 행성: {planet}**  \n이심률 **e = {e:.3f}**, 반장축 **a = {a:.3f} AU**")
+# 중력 상수 * 태양 질량 (단위: AU³/yr²)
+GMsun = 4 * np.pi**2
 
-# 태양 질량 (단위 맞추기 위해 상수화)
-GMsun = 4 * np.pi**2  # AU³/yr²
+# 궤도 계산
+theta_full = np.linspace(0, 2*np.pi, 1000)
+r_full = a * (1 - e**2) / (1 + e * np.cos(theta_full))
+x_orbit = r_full * np.cos(theta_full)
+y_orbit = r_full * np.sin(theta_full)
 
-# 궤도 방정식
-theta = np.linspace(0, 2*np.pi, 1000)
-r = a * (1 - e**2) / (1 + e * np.cos(theta))
-x_orbit = r * np.cos(theta)
-y_orbit = r * np.sin(theta)
-
-# 프레임 선택 (행성 위치 θ)
-frame = st.slider("🌐 공전 위치 조절 (0° ~ 360°)", 0, 360, 45, step=5)
-theta_pos = np.radians(frame)
-r_now = a * (1 - e**2) / (1 + e * np.cos(theta_pos))
-x_now = r_now * np.cos(theta_pos)
-y_now = r_now * np.sin(theta_pos)
-
-# 속도 크기 (에너지 보존 법칙 기반)
-v_now = np.sqrt(GMsun * (2/r_now - 1/a))  # AU/yr
-vx = -v_now * np.sin(theta_pos)
-vy = v_now * np.cos(theta_pos)
-
-# 시각화
-fig, ax = plt.subplots(figsize=(6,6))
-ax.plot(x_orbit, y_orbit, 'gray', lw=1, label="궤도 경로")
-ax.plot(0, 0, 'yo', markersize=10, label="태양")
-ax.plot(x_now, y_now, 'bo', markersize=10, label=f"{planet}")
-
-# 속도 벡터
-ax.quiver(x_now, y_now, vx, vy, color='red', scale=10, label="속도 벡터")
-
-# 세팅
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.set_xlim(-1.6*a, 1.6*a)
+ax.set_ylim(-1.6*a, 1.6*a)
 ax.set_aspect('equal')
 ax.set_xlabel("x (AU)")
 ax.set_ylabel("y (AU)")
-ax.set_title(f"{planet}의 궤도와 속도 벡터")
-ax.legend()
+ax.set_title(f"{planet}'s Elliptical Orbit and Velocity Vector")
 ax.grid(True)
-st.pyplot(fig)
+ax.plot(x_orbit, y_orbit, 'gray', lw=1, label='Orbit Path')
+ax.plot(0, 0, 'yo', label='Sun')
 
-# 수치 정보 출력
-st.markdown(f"""
-### 📊 현재 위치 정보
-- 거리 r = **{r_now:.3f} AU**
-- 속도 v = **{v_now:.3f} AU/yr**
-- 방향 θ = **{frame}°**
-""")
+planet_dot, = ax.plot([], [], 'bo', markersize=8, label='Planet')
+velocity_vector = ax.quiver([], [], [], [], color='red', scale=5, label='Velocity Vector')
+ax.legend()
+
+# 초기화
+def init():
+    planet_dot.set_data([], [])
+    velocity_vector.set_UVC(0, 0)
+    return planet_dot, velocity_vector
+
+# 프레임마다 위치·속도 계산
+def update(frame):
+    theta = 2 * np.pi * frame / 360
+    r = a * (1 - e**2) / (1 + e * np.cos(theta))
+    x = r * np.cos(theta)
+    y = r * np.sin(theta)
+
+    v = np.sqrt(GMsun * (2/r - 1/a))
+    vx = -v * np.sin(theta)
+    vy = v * np.cos(theta)
+
+    planet_dot.set_data(x, y)
+    velocity_vector.set_offsets([x, y])
+    velocity_vector.set_UVC(vx, vy)
+
+    return planet_dot, velocity_vector
+
+# 애니메이션 실행
+with _lock:
+    ani = animation.FuncAnimation(fig, update, frames=360, init_func=init, blit=True, interval=50)
+    st.pyplot(fig)
