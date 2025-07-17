@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import time
 
 st.set_page_config(layout="wide")
-st.title("🌌 Kepler Planetary Orbit and Velocity Simulator")
+st.title("🌌 태양계 행성의 케플러 법 시뮬레이터")
 
-# Planetary data (names in English)
+# 태양계 행성 데이터
 planet_data = {
     "Mercury": {"a": 0.387, "e": 0.206, "T": 0.241},
     "Venus": {"a": 0.723, "e": 0.007, "T": 0.615},
@@ -18,12 +18,12 @@ planet_data = {
     "Neptune": {"a": 30.07, "e": 0.009, "T": 164.8}
 }
 
-e_scale = 5  # Exaggeration factor for eccentricity
-simulation_speed = 0.03
-total_steps = 180
+e_scale = 5  # 이심률 과장 배율
+simulation_speed = 0.03  # 모든 행성에 동일한 시간 간격 적용
+total_steps = 180  # 모든 행성에 동일한 step 수
 
-# Planet selection UI
-st.subheader("🪐 Select a Planet")
+# 행성 선택 UI
+st.subheader("🪐 행성을 선택하세요")
 cols = st.columns(len(planet_data))
 selected_planet = None
 for i, (name, _) in enumerate(planet_data.items()):
@@ -37,9 +37,9 @@ if selected_planet:
     T = planet_data[selected_planet]["T"]
 
     st.markdown(f"""
-    **Selected Planet**: {selected_planet}  
-    실제 이심률: {e_real:.3f} → 보정값: **{e:.3f}**  
-    공전 반지름 a = {a:.3f} AU, 공전 주기기 T = {T:.3f} years
+    **선택한 행성**: {selected_planet}  
+    실제 이심률: {e_real:.3f} → 과장된 이심률: **{e:.3f}**  
+    공전 반지름 a = {a:.3f} AU, 공전 주기 T = {T:.3f} 년
     """)
 
     GMsun = 4 * np.pi**2
@@ -61,19 +61,21 @@ if selected_planet:
         v = np.sqrt(GMsun * (2/r - 1/a))
 
         positions.append((x, y))
-        velocities.append(v * 30)
+        velocities.append(v * 30)  # 시각화를 위한 배율
         times.append(t)
         thetas.append(theta)
         rs.append(r)
 
-    plot_area1, plot_area2 = st.columns(2)
+    plot_area = st.empty()
+    graph_area = st.empty()
 
     for i in range(total_steps):
         x, y = positions[i]
         vx = -np.sin(thetas[i]) * velocities[i]
         vy = np.cos(thetas[i]) * velocities[i]
 
-        fig1, ax1 = plt.subplots(figsize=(4, 4))
+        # 공전 궤도 그래프
+        fig1, ax1 = plt.subplots(figsize=(6, 6))
         ax1.plot(x_orbit, y_orbit, 'gray', lw=1, label='Orbit')
         ax1.plot(0, 0, 'yo', label='Sun')
         ax1.plot(x, y, 'bo', label='Planet')
@@ -87,18 +89,17 @@ if selected_planet:
         ax1.legend()
         ax1.grid(True)
 
-        fig2, ax2 = plt.subplots(figsize=(4, 4))
-        ax2.plot(times[:i+1], velocities[:i+1], color='green')
-        ax2.set_xlim(0, T)
-        ax2.set_ylim(0, 60)
-        ax2.set_xlabel("Time (yr)")
-        ax2.set_ylabel("Orbital Speed - km/s (scaled)")
-        ax2.set_title("Speed - Time Graph")
+         # 속도 그래프
+        fig2, ax2 = plt.subplots()
+        ax2.plot(times, velocities, color='green')
+        ax2.set_xlabel("Time (years)")
+        ax2.set_ylabel("Orbital Speed (scaled km/s)")
+        ax2.set_title("Orbital Speed vs Time")
         ax2.grid(True)
-
-        with plot_area1:
+        
+        with plot_area:
             st.pyplot(fig1)
-        with plot_area2:
+        with graph_area:
             st.pyplot(fig2)
 
         time.sleep(simulation_speed)
