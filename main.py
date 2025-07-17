@@ -1,13 +1,9 @@
-# save this as kepler_orbit_simulator.py and run with:
-# streamlit run kepler_orbit_simulator.py
+# kepler_orbit_simulator.py
 
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-
-from matplotlib.backends.backend_agg import RendererAgg
-_lock = RendererAgg.lock
 
 st.set_page_config(layout="wide")
 st.title("🌞 Kepler Orbit Simulator with Velocity Vectors")
@@ -30,15 +26,16 @@ e = planet_data[planet]["e"]
 
 st.markdown(f"**Selected Planet: {planet}**  \nEccentricity: **{e:.3f}**, Semi-major axis: **{a:.3f} AU**")
 
-# 중력 상수 * 태양 질량 (단위: AU³/yr²)
-GMsun = 4 * np.pi**2
+# 상수 설정
+GMsun = 4 * np.pi**2  # AU³/yr²
 
-# 궤도 계산
+# 궤도 경로
 theta_full = np.linspace(0, 2*np.pi, 1000)
 r_full = a * (1 - e**2) / (1 + e * np.cos(theta_full))
 x_orbit = r_full * np.cos(theta_full)
 y_orbit = r_full * np.sin(theta_full)
 
+# 플롯 설정
 fig, ax = plt.subplots(figsize=(6, 6))
 ax.set_xlim(-1.6*a, 1.6*a)
 ax.set_ylim(-1.6*a, 1.6*a)
@@ -60,7 +57,7 @@ def init():
     velocity_vector.set_UVC(0, 0)
     return planet_dot, velocity_vector
 
-# 프레임마다 위치·속도 계산
+# 업데이트
 def update(frame):
     theta = 2 * np.pi * frame / 360
     r = a * (1 - e**2) / (1 + e * np.cos(theta))
@@ -78,6 +75,7 @@ def update(frame):
     return planet_dot, velocity_vector
 
 # 애니메이션 실행
-with _lock:
-    ani = animation.FuncAnimation(fig, update, frames=360, init_func=init, blit=True, interval=50)
-    st.pyplot(fig)
+ani = animation.FuncAnimation(fig, update, frames=360, init_func=init, blit=True, interval=50)
+
+# 스트림릿 출력
+st.pyplot(fig)
