@@ -1,13 +1,10 @@
-# kepler_velocity_simulator.py
-# 실행: streamlit run kepler_velocity_simulator.py
-
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import time
 
 st.set_page_config(layout="wide")
-st.title("🌞 Kepler Orbit Simulator – Velocity vs Time + Scaled Eccentricity")
+st.title("🌞 Kepler Orbit Simulator – Per-Planet Fixed Time Scale + Velocity Graph")
 
 # 태양계 행성 데이터
 planet_data = {
@@ -21,7 +18,7 @@ planet_data = {
     "Neptune": {"a": 30.07, "e": 0.009, "T": 164.8}
 }
 
-e_scale = 5  # 이심률 과장 배율
+e_scale = 5
 
 # 행성 선택 UI
 st.subheader("🌍 Select a Planet")
@@ -31,7 +28,7 @@ for i, (name, _) in enumerate(planet_data.items()):
     if cols[i].button(name):
         selected_planet = name
 
-# 시뮬레이션 실행
+# 시뮬레이터 실행
 if selected_planet:
     a = planet_data[selected_planet]["a"]
     e_real = planet_data[selected_planet]["e"]
@@ -44,8 +41,7 @@ if selected_planet:
     Semi-major axis: **a = {a:.3f} AU**, Orbital Period: **T = {T:.3f} yr**
     """)
 
-    GMsun = 4 * np.pi**2  # AU^3 / yr^2
-
+    GMsun = 4 * np.pi**2
     theta_all = np.linspace(0, 2*np.pi, 500)
     r_all = a * (1 - e**2) / (1 + e * np.cos(theta_all))
     x_orbit = r_all * np.cos(theta_all)
@@ -57,11 +53,11 @@ if selected_planet:
     times = []
 
     total_steps = 180
-    dt = T / total_steps  # 시간 간격 (년 단위)
+    dt = T / total_steps
 
     for step in range(total_steps):
         t = step * dt
-        theta = 2 * np.pi * (t / T)  # 등시간 각도 진행 (단순 근사)
+        theta = 2 * np.pi * (t / T)
         r = a * (1 - e**2) / (1 + e * np.cos(theta))
         x = r * np.cos(theta)
         y = r * np.sin(theta)
@@ -70,10 +66,9 @@ if selected_planet:
         vx = -v * np.sin(theta)
         vy = v * np.cos(theta)
 
-        velocities.append(v * 30)  # 약 30배 축소 (km/s 비율)
+        velocities.append(v * 30)
         times.append(t)
 
-        # 궤도 그래프
         fig1, ax1 = plt.subplots(figsize=(6, 6))
         ax1.plot(x_orbit, y_orbit, 'gray', lw=1, label='Orbit Path')
         ax1.plot(0, 0, 'yo', label='Sun')
@@ -88,12 +83,13 @@ if selected_planet:
         ax1.legend()
         ax1.grid(True)
 
-        # 속도 그래프
         fig2, ax2 = plt.subplots()
         ax2.plot(times, velocities, color='green')
+        ax2.set_xlim(0, T)
+        ax2.set_ylim(0, 60)
         ax2.set_xlabel("Time (years)")
         ax2.set_ylabel("Orbital Speed (scaled km/s)")
-        ax2.set_title("Orbital Speed vs Time")
+        ax2.set_title("Orbital Speed vs Time (Fixed Scale per Planet)")
         ax2.grid(True)
 
         with plot_area:
