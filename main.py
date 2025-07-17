@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 
 st.set_page_config(layout="wide")
-st.title("🌌 케플러 행성 궤도와 속도 변화 시뮬레이터 (부채꼴 면적 포함)")
+st.title("🌌 태양계 행성의 케플러 법칙 시뮬레이터")
 
 planet_data = {
     "수성": {"a": 0.387, "e": 0.206, "T": 0.241},
