@@ -1,91 +1,44 @@
+# streamlit_app.py
+
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from PIL import Image
-import io
 
-# Streamlit 설정
-st.set_page_config(page_title="Star Evolution on H-R Diagram", layout="centered")
-st.title("🌠 Star Evolution on the H-R Diagram (with Animated Path)")
+# 상수
+G = 4.302e-6  # 중력 상수 (kpc·(km/s)^2)/(Msun)
+
+st.title("🌌 우리은하 속도 곡선 vs 이론 모델 시뮬레이터")
 st.markdown("""
-Upload a **star image (JPG/PNG)** to estimate its color and brightness.  
-This app will animate the **life cycle of a star** across the **Hertzsprung–Russell diagram**.
+이 시뮬레이터는 우리은하 내 별의 **공전 속도 곡선**을 이론적 예측과 실제 관측값을 비교하여,
+**암흑물질의 존재 가능성**을 시각적으로 보여줍니다.
 """)
 
-# 1. 이미지 업로드
-uploaded_file = st.file_uploader("📷 Upload a star image", type=["jpg", "jpeg", "png"])
+# 사용자 입력: 질량 분포 모델 선택
+model = st.radio("질량 분포 모델을 선택하세요", ["중심집중 질량 (뉴턴역학)", "질량 선형 증가 모델"])
 
-if uploaded_file:
-    # 이미지 로드 및 시각화
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Star Image", use_column_width=True)
+# 반지름 설정
+r = np.linspace(0.1, 20, 500)  # kpc
 
-    # 2. RGB 평균값 추출
-    resized = image.resize((100, 100))
-    pixels = np.array(resized)
-    R, G, B = np.mean(pixels[:, :, 0]), np.mean(pixels[:, :, 1]), np.mean(pixels[:, :, 2])
+# 질량 설정 (단순 모델)
+if model == "중심집중 질량 (뉴턴역학)":
+    M = np.ones_like(r) * 1e11  # 중심에 고정된 질량 10^11 Msun
+elif model == "질량 선형 증가 모델":
+    M = 5e9 * r  # 중심에서부터 선형 증가
 
-    # 3. 색지수(B–V), 광도 계산
-    color_index = 0.85 * ((B - R) / 255)
-    color_index = float(np.clip(color_index, -0.4, 2.0))
-    temperature = 9000 / (color_index + 1.5)
-    luminosity = (temperature / 5800) ** 4
-    log_lum = np.log10(luminosity)
+# 속도 계산: v = sqrt(GM/r)
+v_model = np.sqrt(G * M / r)
 
-    st.subheader("📽️ Animated Stellar Evolution on H-R Diagram")
+# 실제 관측된 은하 속도 곡선 (대략적)
+r_obs = np.linspace(0.1, 20, 100)
+v_obs = np.ones_like(r_obs) * 220  # 실제 은하는 속도가 거의 일정함 (평탄한 곡선)
 
-    # 4. 별 진화 경로 설정 (예시 경로)
-    path = {
-        "Main Sequence": {"B-V": color_index, "logL": log_lum},
-        "Red Giant": {"B-V": 1.5, "logL": 3.5},
-        "Helium Burning": {"B-V": 0.8, "logL": 2.5},
-        "White Dwarf": {"B-V": 0.2, "logL": -1.0}
-    }
-
-    labels = list(path.keys())
-    BVs = [path[k]["B-V"] for k in labels]
-    logLs = [path[k]["logL"] for k in labels]
-
-    # 5. 애니메이션용 H-R도 설정
-    fig, ax = plt.subplots(figsize=(6, 5))
-    ax.set_xlim(2.0, -0.4)
-    ax.set_ylim(-2, 6)
-    ax.set_xlabel("Color Index (B - V)")
-    ax.set_ylabel("Luminosity (log L / L☉)")
-    ax.set_title("Hertzsprung–Russell Diagram")
-    ax.grid(True)
-    ax.plot(BVs, logLs, linestyle='dashed', color='gray', alpha=0.7, label='Evolution Path')
-
-    point, = ax.plot([], [], 'ro', markersize=10)
-    label_text = ax.text(0.05, 0.92, '', transform=ax.transAxes)
-
-    # 초기화 함수
-    def init():
-        point.set_data([], [])
-        label_text.set_text('')
-        return point, label_text
-
-    # 프레임 업데이트 함수
-    def update(frame):
-        x = BVs[frame]
-        y = logLs[frame]
-        point.set_data(x, y)
-        label_text.set_text(f"Stage: {labels[frame]}")
-        return point, label_text
-
-    # 6. 애니메이션 생성
-    ani = FuncAnimation(fig, update, frames=len(labels), init_func=init,
-                        blit=True, repeat=False, interval=1200)
-
-    # 7. GIF로 저장해서 Streamlit에 표시
-    gif_buffer = io.BytesIO()
-    ani.save(gif_buffer, format='gif', fps=1)
-    gif_buffer.seek(0)
-
-    st.image(gif_buffer, caption="🌟 Star Evolution Animation", use_column_width=False)
-
-    st.success("✅ Animation complete! The star's evolution has been visualized.")
-
-else:
-    st.info("Please upload a star image (JPG or PNG) to begin.")
+# 그래프 출력
+fig, ax = plt.subplots()
+ax.plot(r, v_model, label=f"이론 속도곡선 ({model})", lw=2)
+ax.plot(r_obs, v_obs, 'r--', label="관측된 속도곡선", lw=2)
+ax.set_xlabel("중심으로부터 거리 (kpc)")
+ax.set_ylabel("공전 속도 (km/s)")
+ax.set_title("은하 회전 곡선 비교")
+ax.legend()
+ax.grid(True)
+st.pyplot(fig)
