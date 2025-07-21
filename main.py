@@ -4,74 +4,77 @@ import numpy as np
 from PIL import Image
 
 st.set_page_config(layout="wide")
-st.title("🔬 후성유전 조절과 mRNA 유도 발현 시뮬레이터")
+st.title("🔬 Epigenetic Regulation vs. mRNA Vaccine-driven Expression Simulator")
 
 st.markdown("""
-이 시뮬레이터는 **mRNA 백신 기술**과 **후성유전학적 조절**이 단백질 발현(RFP) 양에 어떤 영향을 미치는지 시각화합니다.
+이 시뮬레이터는 **mRNA 백신 기술**과 **후성유전학적 조절**이 단백질 발현(RFP)에 어떤 영향을 미치는지 비교할 수 있게 해줍니다.
 
-아래에서 실험 조건을 설정해 보세요:
+외부 mRNA의 주입 유무, 그리고 **히스톤 탈아세틸화 억제제(HDAC inhibitor)**의 적용 및 강도를 조절하여 다양한 분자적 조건에서의 유전자 발현 결과를 시각화할 수 있습니다.
 """)
 
 # ------------------------
-# 🌟 실험 조건 입력
+# 🌟 Experiment Parameters
 # ------------------------
 col1, col2 = st.columns(2)
 
 with col1:
-    mRNA = st.checkbox("외부 mRNA 도입 (백신 모사)", value=False)
-    inhibitor = st.checkbox("HDAC 억제제 처리 (히스톤 탈아세틸화 억제)", value=False)
+    mRNA = st.checkbox("Inject external mRNA (vaccine mimic)", value=False)
+    inhibitor = st.checkbox("Apply HDAC inhibitor (blocks histone deacetylation)", value=False)
 
 with col2:
-    inhibitor_strength = st.slider("HDAC 억제제 강도 (%)", 0, 100, 0 if not inhibitor else 50)
+    inhibitor_strength = st.slider("HDAC Inhibitor Intensity (%)", 0, 100, 0 if not inhibitor else 50)
 
 # ------------------------
-# 🔬 시뮬레이션 로직
+# 🔬 Simulation Logic
 # ------------------------
-baseline = 10
-mRNA_effect = 50 if mRNA else 0
-epigenetic_effect = 30 * (inhibitor_strength / 100) if inhibitor else 0
+baseline = 10  # baseline expression
+mRNA_effect = 50 if mRNA else 0  # protein expression from direct mRNA translation
+epigenetic_effect = 30 * (inhibitor_strength / 100) if inhibitor else 0  # transcription enhancement from euchromatin state
+
 total_expression = baseline + mRNA_effect + epigenetic_effect
 
 # ------------------------
-# 📊 발현량 시각화
+# 📊 Expression Bar Graph
 # ------------------------
-st.subheader("📊 RFP 단백질 발현량 결과")
+st.subheader("📊 RFP Protein Expression Result")
 fig, ax = plt.subplots()
-ax.bar(["발현량"], [total_expression], color="#FF6F61")
+ax.bar(["Expression Level"], [total_expression], color="#FF6F61")
 ax.set_ylim(0, 100)
-ax.set_ylabel("상대 발현량")
-ax.set_title("총 단백질 발현 (RFP)")
+ax.set_ylabel("Relative Expression Level")
+ax.set_title("Total RFP Protein Expression")
 st.pyplot(fig)
 
 # ------------------------
-# 🧬 염색질 상태 이미지 설명
+# 🧬 Mechanism and Visuals
 # ------------------------
-st.subheader("🧬 생물학적 해설 및 시각화")
+st.subheader("🧬 Molecular Mechanism and Visual Explanation")
 
 if inhibitor:
-    st.markdown("**HDAC 억제제 처리로 히스톤 아세틸화가 증가하여, 염색질이 이완된 상태(Euchromatin)가 되어 전사가 촉진됩니다.**")
-    image1 = Image.open("/mnt/data/euchromatin.png")
-    st.image(image1, caption="히스톤 아세틸화 → Euchromatin")
+    st.markdown("**HDAC 억제제는 히스톤 아세틸화를 증가시켜 염색질을 이완시켜 전사를 촉진합니다.**")
+    image1 = Image.open("euchromatin.png")
+    st.image(image1, caption="Histone acetylation → Euchromatin")
 else:
-    st.markdown("**히스톤 탈아세틸화로 인해 염색질이 응축된 상태(Heterochromatin)가 되어 전사가 억제됩니다.**")
-    image2 = Image.open("/mnt/data/heterochromatin.png")
-    st.image(image2, caption="히스톤 탈아세틸화 → Heterochromatin")
+    st.markdown("**억제제가 없을 경우 히스톤 탈아세틸화로 인해 염색질이 응축되어 전사가 억제됩니다.**")
+    image2 = Image.open("heterochromatin.png")
+    st.image(image2, caption="Histone deacetylation → Heterochromatin")
 
 if mRNA:
-    st.markdown("**외부 mRNA 주입은 핵 단계를 거치지 않고 바로 번역되어 단백질을 생성합니다.**")
-    image3 = Image.open("/mnt/data/mrna_translation.png")
-    st.image(image3, caption="주입된 mRNA → 세포질에서 번역 → 단백질 생성")
+    st.markdown("**주입된 mRNA는 핵을 거치지 않고 세포질에서 직접 번역되어 RFP 단백질을 생성합니다.**")
+    image3 = Image.open("mrna_translation.png")
+    st.image(image3, caption="Injected mRNA → Cytoplasmic translation → Protein synthesis")
 
 # ------------------------
-# 📘 해설 요약
+# 📘 Summary Explanation
 # ------------------------
-st.subheader("📘 종합 해설")
+st.subheader("📘 Summary Explanation")
 
 st.markdown(f"""
-- 대조군의 기본 발현량은 **{baseline}**입니다.  
-- mRNA 도입 시 **{mRNA_effect}**만큼 번역이 유도됩니다.  
-- 후성유전학적 조절(히스톤 변형)은 **{epigenetic_effect:.1f}**만큼 전사를 촉진합니다.  
-- 최종 RFP 발현량은 **{total_expression:.1f}**입니다.
+- Baseline expression: **{baseline}**  
+- Additional expression from injected mRNA: **{mRNA_effect}**  
+- Transcription enhancement via histone acetylation: **{epigenetic_effect:.1f}**  
+- 👉 Final RFP expression level: **{total_expression:.1f}**
 
-➡️ 이 결과는 유전자 발현이 **DNA 염기서열 변화 없이도 조절 가능함**을 보여줍니다.
+이 시뮬레이션은 DNA 염기서열을 변화시키지 않고도 유전자 발현을 조절할 수 있는 두 가지 메커니즘을 시각적으로 보여줍니다.
+
+mRNA는 번역을 통해 직접 단백질을 발현시키고, 후성유전학은 전사 가능성을 조절함으로써 유전자 발현에 영향을 줍니다. 이 두 방식은 생명공학 및 의학적 응용에서 중요한 유전자 조절의 층위를 보여줍니다.
 """)
