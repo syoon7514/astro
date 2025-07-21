@@ -37,10 +37,11 @@ total_expression = baseline + mRNA_effect + epigenetic_effect
 # 📊 Expression Bar Graph
 # ------------------------
 st.subheader("📊 RFP Protein Expression Result")
-fig, ax = plt.subplots()
-ax.bar(["Expression Level"], [total_expression], color="#FF6F61")
+fig, ax = plt.subplots(figsize=(4, 2))
+ax.bar(["RFP Expression"], [total_expression], color="#FF6F61")
 ax.set_ylim(0, 100)
-ax.set_ylabel("Relative Expression Level")
+ax.set_xlabel("Condition")
+ax.set_ylabel("Expression Level")
 ax.set_title("Total RFP Protein Expression")
 st.pyplot(fig)
 
@@ -51,16 +52,16 @@ st.subheader("🧬 Molecular Mechanism and Visual Explanation")
 
 if inhibitor:
     st.markdown("**HDAC 억제제는 히스톤 아세틸화를 증가시켜 염색질을 이완시켜 전사를 촉진합니다.**")
-    image1 = Image.open("euchromatin.png")
+    image1 = Image.open("/mnt/data/euchromatin.png")
     st.image(image1, caption="Histone acetylation → Euchromatin")
 else:
     st.markdown("**억제제가 없을 경우 히스톤 탈아세틸화로 인해 염색질이 응축되어 전사가 억제됩니다.**")
-    image2 = Image.open("heterochromatin.png")
+    image2 = Image.open("/mnt/data/heterochromatin.png")
     st.image(image2, caption="Histone deacetylation → Heterochromatin")
 
 if mRNA:
     st.markdown("**주입된 mRNA는 핵을 거치지 않고 세포질에서 직접 번역되어 RFP 단백질을 생성합니다.**")
-    image3 = Image.open("mrna_translation.png")
+    image3 = Image.open("/mnt/data/mrna_translation.png")
     st.image(image3, caption="Injected mRNA → Cytoplasmic translation → Protein synthesis")
 
 # ------------------------
