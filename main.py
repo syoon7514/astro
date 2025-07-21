@@ -1,124 +1,77 @@
 import streamlit as st
-import numpy as np
 import matplotlib.pyplot as plt
-import time
+import numpy as np
+from PIL import Image
 
 st.set_page_config(layout="wide")
-st.title("\U0001F30C 태양계 행성의 케플러 법칙 시뮬레이터")
+st.title("🔬 후성유전 조절과 mRNA 유도 발현 시뮬레이터")
 
-# 태양계 행성 데이터
-planet_data = {
-    "Mercury": {"a": 0.387, "e": 0.206, "T": 0.241},
-    "Venus": {"a": 0.723, "e": 0.007, "T": 0.615},
-    "Earth": {"a": 1.000, "e": 0.017, "T": 1.000},
-    "Mars": {"a": 1.524, "e": 0.093, "T": 1.881},
-    "Jupiter": {"a": 5.203, "e": 0.049, "T": 11.862},
-    "Saturn": {"a": 9.537, "e": 0.056, "T": 29.457},
-    "Uranus": {"a": 19.191, "e": 0.047, "T": 84.011},
-    "Neptune": {"a": 30.07, "e": 0.009, "T": 164.8}
-}
+st.markdown("""
+이 시뮬레이터는 **mRNA 백신 기술**과 **후성유전학적 조절**이 단백질 발현(RFP) 양에 어떤 영향을 미치는지 시각화합니다.
 
-e_scale = 5  # 이심률 과장 배율
-total_duration = 30  # 전체 애니메이션 시간 (초)
-simulation_speed = 0.03  # 1프레임당 시간 (초)
-total_frames = int(total_duration / simulation_speed)
+아래에서 실험 조건을 설정해 보세요:
+""")
 
-# 행성 선택 UI
-st.subheader("\U0001FA90 행성을 선택하세요")
-cols = st.columns(len(planet_data))
-selected_planet = None
-for i, (name, _) in enumerate(planet_data.items()):
-    if cols[i].button(name):
-        selected_planet = name
+# ------------------------
+# 🌟 실험 조건 입력
+# ------------------------
+col1, col2 = st.columns(2)
 
-if selected_planet:
-    a = planet_data[selected_planet]["a"]
-    e_real = planet_data[selected_planet]["e"]
-    e = min(e_real * e_scale, 0.9)
-    T = planet_data[selected_planet]["T"]
+with col1:
+    mRNA = st.checkbox("외부 mRNA 도입 (백신 모사)", value=False)
+    inhibitor = st.checkbox("HDAC 억제제 처리 (히스톤 탈아세틸화 억제)", value=False)
 
-    # 공통 프레임 수를 가지면서 주기에 비례한 시간 간격 설정
-    dt = T / total_frames
+with col2:
+    inhibitor_strength = st.slider("HDAC 억제제 강도 (%)", 0, 100, 0 if not inhibitor else 50)
 
-    GMsun = 4 * np.pi**2
+# ------------------------
+# 🔬 시뮬레이션 로직
+# ------------------------
+baseline = 10
+mRNA_effect = 50 if mRNA else 0
+epigenetic_effect = 30 * (inhibitor_strength / 100) if inhibitor else 0
+total_expression = baseline + mRNA_effect + epigenetic_effect
 
-    theta_all = np.linspace(0, 2*np.pi, 500)
-    r_all = a * (1 - e**2) / (1 + e * np.cos(theta_all))
-    x_orbit = r_all * np.cos(theta_all)
-    y_orbit = r_all * np.sin(theta_all)
+# ------------------------
+# 📊 발현량 시각화
+# ------------------------
+st.subheader("📊 RFP 단백질 발현량 결과")
+fig, ax = plt.subplots()
+ax.bar(["발현량"], [total_expression], color="#FF6F61")
+ax.set_ylim(0, 100)
+ax.set_ylabel("상대 발현량")
+ax.set_title("총 단백질 발현 (RFP)")
+st.pyplot(fig)
 
-    positions, velocities, times, thetas, rs = [], [], [], [], []
+# ------------------------
+# 🧬 염색질 상태 이미지 설명
+# ------------------------
+st.subheader("🧬 생물학적 해설 및 시각화")
 
-    for step in range(total_frames):
-        t = step * dt
-        theta = 2 * np.pi * (t / T)
-        r = a * (1 - e**2) / (1 + e * np.cos(theta))
-        x = r * np.cos(theta)
-        y = r * np.sin(theta)
-        v = np.sqrt(GMsun * (2/r - 1/a))
-
-        positions.append((x, y))
-        velocities.append(v * 30)  # 시각화를 위한 배율
-        times.append(t)
-        thetas.append(theta)
-        rs.append(r)
-
-    def sector_area(r1, r2, dtheta):
-        return 0.5 * r1 * r2 * abs(dtheta)
-
-    steps_20 = int(total_frames * 0.2)
-    start_area = sum(
-        sector_area(rs[i], rs[i+1], thetas[i+1] - thetas[i]) for i in range(steps_20-1)
-    )
-    end_area = sum(
-        sector_area(rs[-i-2], rs[-i-1], thetas[-i-1] - thetas[-i-2]) for i in range(steps_20-1)
-    )
-
-    st.markdown(f"""
-    **선택한 행성**: {selected_planet}  
-    실제 이심률: {e_real:.3f} → 과장된 이심률: **{e:.3f}**  
-    공전 반지름 a = {a:.3f} AU, 공전 주기 T = {T:.3f} 년
-
-    ### \U0001F4D0 케플러 제2법칙: 면적 비교
-    - 공전 초반 20% 부채꼴 면적: {start_area:.5f} AU²  
-    - 공전 마지막 20% 부채꼴 면적: {end_area:.5f} AU²  
-    👉 두 면적이 거의 동일함을 통해 **같은 시간 동안 같은 면적을 휩쓴다**는 법칙을 확인할 수 있어요.
-    """)
-
-    plot_area, graph_area = st.columns(2)
-
-    for i in range(total_frames):
-        x, y = positions[i]
-        vx = -np.sin(thetas[i]) * velocities[i]
-        vy = np.cos(thetas[i]) * velocities[i]
-
-        # 공전 궤도 그래프
-        fig1, ax1 = plt.subplots(figsize=(3.5, 3.5))
-        ax1.plot(x_orbit, y_orbit, 'gray', lw=1)
-        ax1.plot(0, 0, 'yo')
-        ax1.plot(x, y, 'bo')
-        ax1.quiver(x, y, vx, vy, color='red', scale=15, width=0.007)
-        ax1.set_aspect('equal')
-        ax1.set_xlim(-2*a, 2*a)
-        ax1.set_ylim(-1.5*a, 1.5*a)
-        ax1.set_xlabel("x (AU)")
-        ax1.set_ylabel("y (AU)")
-        ax1.set_title(f"{selected_planet} - Time: {times[i]:.2f} yr")
-        ax1.grid(True)
-
-        # 속도 그래프 (실시간 업데이트)
-        fig2, ax2 = plt.subplots(figsize=(3.5, 3.5))
-        ax2.plot(times[:i+1], velocities[:i+1], color='green')
-        ax2.set_xlabel("Time (years)")
-        ax2.set_ylabel("Orbital Speed (scaled km/s)")
-        ax2.set_title("Orbital Speed vs Time")
-        ax2.grid(True)
-
-        with plot_area:
-            st.pyplot(fig1)
-        with graph_area:
-            st.pyplot(fig2)
-
-        time.sleep(simulation_speed)
+if inhibitor:
+    st.markdown("**HDAC 억제제 처리로 히스톤 아세틸화가 증가하여, 염색질이 이완된 상태(Euchromatin)가 되어 전사가 촉진됩니다.**")
+    image1 = Image.open("/mnt/data/euchromatin.png")
+    st.image(image1, caption="히스톤 아세틸화 → Euchromatin")
 else:
-    st.info("행성을 선택하면 시뮬레이션이 시작됩니다.")
+    st.markdown("**히스톤 탈아세틸화로 인해 염색질이 응축된 상태(Heterochromatin)가 되어 전사가 억제됩니다.**")
+    image2 = Image.open("/mnt/data/heterochromatin.png")
+    st.image(image2, caption="히스톤 탈아세틸화 → Heterochromatin")
+
+if mRNA:
+    st.markdown("**외부 mRNA 주입은 핵 단계를 거치지 않고 바로 번역되어 단백질을 생성합니다.**")
+    image3 = Image.open("/mnt/data/mrna_translation.png")
+    st.image(image3, caption="주입된 mRNA → 세포질에서 번역 → 단백질 생성")
+
+# ------------------------
+# 📘 해설 요약
+# ------------------------
+st.subheader("📘 종합 해설")
+
+st.markdown(f"""
+- 대조군의 기본 발현량은 **{baseline}**입니다.  
+- mRNA 도입 시 **{mRNA_effect}**만큼 번역이 유도됩니다.  
+- 후성유전학적 조절(히스톤 변형)은 **{epigenetic_effect:.1f}**만큼 전사를 촉진합니다.  
+- 최종 RFP 발현량은 **{total_expression:.1f}**입니다.
+
+➡️ 이 결과는 유전자 발현이 **DNA 염기서열 변화 없이도 조절 가능함**을 보여줍니다.
+""")
